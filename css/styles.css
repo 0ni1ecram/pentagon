@@ -1,0 +1,402 @@
+body {
+	font-size: 16px;
+	color: #fff;
+	background-color: #00664d;
+	overflow-x: hidden;
+	box-sizing: border-box;
+	
+}
+a {
+	padding: 0;
+}
+
+/*  HEADER  */
+#header-nav {
+	background-color: #f6b319;
+	border-radius: 0;
+	border: 0;
+}
+
+#logo-img {
+	background: url('../images/ptaLogoMedium.png') no-repeat;
+	width: 50px;
+	height: 50px;
+	margin: 1px 1px 1px 0;	 
+}
+
+.navbar-brand {
+	padding-right: 2px;
+	padding-top: 2px;
+}
+.container{
+	margin: 0;
+	width: 100%;
+}
+.navbar-brand h1 { /* Dynasty Name: PentagonTradingAgency*/
+	font-family: ;
+	color: ;
+	padding: 0;
+	font-size: 1.0em;
+	text-transform: ;
+	font-weight: bold;
+	text-shadow: 1px 1px 1px #222;
+	margin-top: 10px;
+	margin-bottom: 0px;
+	line-height: ;
+}
+
+.navbar-brand a:hover, .navbar-brand a:focus {
+	text-decoration: none;
+}
+
+
+
+.navbar-brand p { /* House of Bolts and Nuts*/	
+	color:;
+	text-transform: ;
+	font-size: .75em;
+	margin-top: 0px;
+}
+.navbar-brand p span {
+	vertical-align: middle;
+}
+#nav-list {
+	margin-top: 1px;
+}
+#nav-list a {
+	color: #00664d;
+	text-align: left;
+	margin-left: 1px; 
+}
+#nav-list a:hover {
+	color: #E7E7E7;	
+}
+#nav-list a span {
+	font-size: 1.8em;
+}
+#collapsable-nav {
+	font-size: 1.2em;
+	
+}
+.list-name{
+	padding: 5px 0px 10px 10px !important;
+	margin-left: 12px !important; 	
+}
+#phone {
+	margin-top: 0px;	
+	position: absolute;
+	position: -72px x -200px;
+
+}
+#phone {
+	text-align: right;
+	padding-bottom: 0px;
+}
+#phone div {
+	color:;
+	text-align: right;
+	padding-right: 10px;
+}
+.navbar-header button.navbar-toggle, .navbar-header .icon-bar {
+	border: 1px solid #00664d;
+}
+.navbar-header button.navbar-toggle {
+	clear: both; 
+	margin-top: -38px;
+}
+
+/*   END HEADER  */
+
+/*    Footer  */
+	.panel-footer {
+		margin-top:30px;
+		margin-bottom: 35px:
+		padding-bottom: 30px;
+		border-top: 0;
+		background-color: #222;
+		} 
+	.panel-footer div.row {
+		margin-bottom: 35px;
+	}	
+	#hours, #address {
+		line-height: 2;
+	}
+	#hours > span, #address > span {
+		font-size: 1.3em;
+	}
+	#address p {
+		color: #557c3e;
+		font-size: .8em;
+		line-height: 1.8; 
+	}
+	#testimonials {
+		font-style: italic;
+	}
+	#testimonials p:nth-child(2){
+		margin-top: 25px;
+	}
+	/*  End of Footer*/
+
+	/*MENU Categories Page*/
+	.category-title	{
+		position: relative;
+		border-radius: 12px;
+		border: 2px solid #3F0C1F;
+		overflow: hidden;
+		width: 200px;
+		height: 200px;
+		margin: 0 auto 25px;
+	}
+	.category-title span {
+		position: absolute;
+		bottom: 0;
+		right: 0;
+		width: 100%;
+		 text-align: center;
+		 text-transform: uppercase;
+		 font-size: 1.2em;
+		 background: #000;
+		 color: #fff;
+		 opacity: .8;
+	}
+	.category-title:hover {
+		box-shadow: 0 1px 5px 1px #cccccc;
+	}
+	/*End of MENU Categories Page*/
+
+	/*Single Category Page*/
+	.menu-item-tile {
+		margin-bottom: 25px; 
+	}
+	.menu-item-tile hr {
+		width: 80%;
+	}
+	.menu-item-tile .menu-item-price {
+		font-size: 1.1em;
+		text-align: right;/*
+		margin-top: -15px;
+		margin-right: -15px;*/
+	}
+	.menu-item-tile .menu-item-price span {
+		font-size: .6em;
+	}
+	.menu-item-photo {
+		position: relative;
+		border: 2px solid #3F0C1F;
+		overflow: hidden;
+		padding: 0;
+		margin-right: -15px;
+		margin-left: auto;
+		margin-bottom: 20px;
+		max-width: 300px;
+
+	}
+	.menu-item-photo div{
+		 position: absolute;
+		 bottom: 0;
+		 right: 0;
+		 width: 80px;
+		 background-color: #557e3e;
+		 text-align: center;
+	}
+	.menu-item-description {
+		padding-right: 30px;
+	}
+	h3.menu-item-title {
+		margin:  0 0 10px;
+	}
+	.menu-item-detail {
+		font-size: .9em;
+		font-style: italic;
+	}
+	/*End of Single Category Page*/
+
+/*********Large Device only***************/
+@media (min-width: 1200px){
+	/*Home Page*/
+	.container .jumbotron {
+		background: url('../images/hardwareStore1200.jpg');
+		height: 670px;
+		width: 100%;
+		blur: .5;
+		box-shadow: 0 0 50px #3F0C1F; 
+		border: 2px solid #3F0C1F;
+	}
+
+	#menu-title, #tools-title, #map-title {
+		height: 250px;
+		width: 100%;
+		margin-bottom: 10px;
+		position: relative;
+		border: 2px solid #3F0C1F;
+		overflow: ;
+		
+	}
+	#menu-title:hover, #tools-title:hover, #map-title:hover{
+		box-shadow: 0 1px 5px 1px #cccccc; 
+	}
+
+	#menu-title {
+		background: url('../images/Bolts250.jpg')  no-repeat;
+		position: center;
+		border-radius: 2;
+	}
+	#tools-title {
+		background: url('../images/tools.jpg')  no-repeat;
+		position: center;
+		border-radius: 2;
+	}
+
+	#menu-title span, #tools-title span, #map-title span {
+		position: absolute;
+		bottom: 0;
+		right: 0;
+		width: 100%;
+		text-align: center;
+		font-size: 1.7rem;
+		text-transform: uppercase;
+		background-color: #000;
+		color: #fff;
+		opacity: .8;
+	}
+	#boltsnuts-categories-title + div {
+		margin-bottom: 50px
+	}
+	/* End Home Page */
+
+}
+
+/***********Medium Devices Only************/
+@media (min-width: 992px) and (max-width: 1199px) {
+
+#logo-img {
+	background: url('../images/ptaLogoMedium.png');
+	width: 50px;
+	height: 50px;
+	margin: 1px 1px 1px 0;	 
+  }
+
+  /*Home Page*/
+	.container .jumbotron {
+		background: url('../images/hardwareStore992.jpg');
+		height: 670px;
+		width: 100vw;
+		box-shadow: 0 0 50px #3F0C1F;
+		border: 2px solid #3F0C1F;
+
+	#menu-title span, #tools-title span, #map-title span {
+	    position: relative;
+    	min-height: 1px;
+    	padding-right: 15px;
+    	padding-left: 15px;
+		font-size: 1.7rem;
+		text-transform: uppercase;
+		background-color: #000;
+		color: #fff;
+		opacity: .8;
+	}
+	/* End Home Page */
+}
+
+/***********Small Devices Only************/
+@media (min-width: 766px) and (max-width: 991px) {
+	/*Home Page*/
+	.container .jumbotron {
+		background: url('../images/hardwareStore768.jpg');
+		height: 670px;
+		width: 100%;
+		box-shadow: 0 0 50px #3F0C1F;
+		border: 2px solid #3F0C1F;
+	}
+	/* End Home Page */
+
+}
+
+/*******Extra Small Devices Only************/
+@media (min-width: 480px) and (max-width: 765px) {
+	/*  HEADER  */
+	.navbar-brand {
+		padding-top: 5px;
+		height: 80px;		
+	}
+	.navbar-brand h1 {
+		padding-top: 5px;
+		font-size: 5vw;
+	}
+	.navbar-brand p {
+		font-size: .6em;
+		margin-top: 10px;		
+	}
+	.navbar-brand p img {
+		height: 10px;
+	}
+	#collapsable-nav a {/* Collapsed nav menu*/
+		font-size: 1.2em;
+	}
+	#collapsable-nav a span {/* Collapsed nav menu glyph*/
+		font-size: 1.2em;
+		margin: 5px;
+	}
+	#call-btn > a {
+		font-size: 1.5em;
+		display: block;
+		margin: 0 10px;
+		padding: 10px;
+		border: 2px solid #fff;
+		background-color: #ff6bb319; 
+		color: #951c49;
+	}
+
+	#xs-deliver {
+		margin-top: 5px;
+		font-size: .7em;
+		letter-spacing: .1em;
+		text-transform: uppercase;
+	}
+	/*  End of Header*/
+	
+	/* Footer */
+	.panel-footer section {
+		margin-bottom: 30px;
+		text-align: center;
+	}
+	.panel-footer section:nth-child(3) {
+		margin-bottom: 0;
+	}
+	.panel-footer section hr {
+		width: 50%;
+	}
+	/* End of Footer*/
+
+	/*Home Page*/
+	.container .jumbotron {
+		margin-top: 30px;
+		padding: 0px !important  ;
+		box-shadow: 0 0 50px #3F0C1F;
+		border: 2px solid #3F0C1F;
+	}
+	
+	.menu-item-photo {
+		margin-right: auto;
+	}
+	/* End Home Page */
+
+}
+
+
+/***************Extra Small Devies only**************/
+ @media (max-width: 479px) {
+ 	/***Home Page****/
+ 	#menu-title, #tools-title {
+ 		width: 280px;
+ 		margin: 0px auto 15px;
+ 	}
+ 	.col-xxs-12 {
+ 		position: relative;
+ 		min-height: 1px;
+ 		padding-right: 15px;
+ 		padding-left: 15px;
+ 		float: left;
+ 		width: 100%;
+ 	}
+ }

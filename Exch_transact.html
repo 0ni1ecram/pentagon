@@ -1,0 +1,434 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Marcel & Anel • Reconciliation Ledger</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
+    />
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+      body {
+        font-family: "Inter", sans-serif;
+      }
+
+      /* Mobile-first optimization */
+      .table-container {
+        max-height: 65vh;
+        overflow-y: auto;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      table {
+        min-width: 720px; /* Forces horizontal scroll on very small phones */
+      }
+
+      th,
+      td {
+        padding: 18px 12px; /* Bigger touch targets */
+        font-size: 15px; /* Perfect mobile readable size */
+        line-height: 1.4;
+      }
+
+      @media (min-width: 768px) {
+        th,
+        td {
+          font-size: 13.5px; /* Slightly smaller on tablet/desktop */
+          padding: 16px 10px;
+        }
+      }
+
+      .credit {
+        color: #10b981;
+      }
+      .debit {
+        color: #ef4444;
+      }
+      .summary-number {
+        font-size: 2.25rem;
+      } /* Bigger on mobile */
+
+      @media (min-width: 640px) {
+        .summary-number {
+          font-size: 2.75rem;
+        }
+      }
+    </style>
+  </head>
+  <body class="bg-slate-50 text-slate-800">
+    <header class="bg-white shadow border-b sticky top-0 z-50">
+      <div
+        class="max-w-7xl mx-auto px-5 py-5 flex justify-between items-center"
+      >
+        <div class="flex items-center gap-3">
+          <div
+            class="w-10 h-10 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-2xl flex items-center justify-center text-white text-3xl font-bold"
+          >
+            M
+          </div>
+          <div>
+            <h1 class="text-2xl md:text-3xl font-bold tracking-tight">
+              Marcel & Anel
+            </h1>
+            <p class="text-xs md:text-sm text-slate-500">
+              Reconciliation Ledger • 17 Entries
+            </p>
+          </div>
+        </div>
+        <button
+          onclick="downloadCSV()"
+          class="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-3 rounded-2xl text-sm font-semibold transition"
+        >
+          <i class="fas fa-download"></i> CSV
+        </button>
+      </div>
+    </header>
+
+    <div class="max-w-7xl mx-auto px-5 py-6">
+      <!-- SUMMARY CARDS – Mobile Optimized -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div class="bg-white rounded-3xl p-5 shadow border">
+          <p class="text-[10px] uppercase tracking-widest text-slate-500">
+            Marcel MUR
+          </p>
+          <p id="marcelNet" class="summary-number font-bold text-red-600 mt-1">
+            -119,421 MUR
+          </p>
+        </div>
+        <div class="bg-white rounded-3xl p-5 shadow border">
+          <p class="text-[10px] uppercase tracking-widest text-slate-500">
+            Marcel TZS
+          </p>
+          <p
+            id="marcelTzsh"
+            class="summary-number font-bold text-emerald-600 mt-1"
+          >
+            +5,020,000 TZS
+          </p>
+        </div>
+        <div class="bg-white rounded-3xl p-5 shadow border">
+          <p class="text-[10px] uppercase tracking-widest text-slate-500">
+            Anel TZS
+          </p>
+          <p id="anelTzsh" class="summary-number font-bold text-red-600 mt-1">
+            -543,610 TZS
+          </p>
+        </div>
+        <div class="bg-white rounded-3xl p-5 shadow border">
+          <p class="text-[10px] uppercase tracking-widest text-slate-500">
+            Entries
+          </p>
+          <p class="summary-number font-bold text-slate-800 mt-1">17</p>
+        </div>
+      </div>
+
+      <!-- SEARCH – Bigger on mobile -->
+      <div class="mb-6">
+        <input
+          id="searchInput"
+          type="text"
+          placeholder="Search description or party..."
+          onkeyup="filterTable()"
+          class="w-full px-5 py-4 text-base border border-slate-300 focus:border-indigo-500 rounded-3xl shadow-sm focus:ring-2 focus:ring-indigo-200 outline-none"
+        />
+      </div>
+
+      <!-- TABLE -->
+      <div class="bg-white rounded-3xl shadow border overflow-hidden">
+        <div class="table-container">
+          <table class="w-full">
+            <thead class="bg-slate-100 sticky top-0">
+              <tr>
+                <th class="text-left font-medium">Entry</th>
+                <th class="text-left font-medium">Party</th>
+                <th class="text-left font-medium">Type</th>
+                <th class="text-left font-medium">Description</th>
+                <th class="text-right font-medium">MUR</th>
+                <th class="text-right font-medium">TZSH</th>
+                <th class="text-right font-medium">Balance MUR</th>
+                <th class="text-left font-medium">Notes</th>
+              </tr>
+            </thead>
+            <tbody
+              id="tableBody"
+              class="divide-y divide-slate-200 text-slate-700"
+            >
+              <!-- Populated by JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="text-center text-[10px] text-slate-400 mt-6">
+        Marcel & Anel Reconciliation • Mobile-optimized • March 2026
+      </div>
+    </div>
+
+    <script>
+      // ==================== FULL DATA (same 17 rows) ====================
+      const ledgerData = [
+        /* ... exactly the same data as previous version ... */
+        {
+          entry: 1,
+          party: "Marcel",
+          type: "Opening_Balance",
+          desc: "OPEN",
+          mur: 50000.0,
+          tzsh: null,
+          balance: 50000.0,
+          notes: "Starting balance",
+        },
+        {
+          entry: 2,
+          party: "Marcel",
+          type: "Debit",
+          desc: "Sent TZSH",
+          mur: -35800.0,
+          tzsh: null,
+          balance: 14200.0,
+          notes: "-35,800 MUR equivalent",
+        },
+        {
+          entry: 3,
+          party: "Marcel",
+          type: "Credit",
+          desc: "Anel debt added",
+          mur: 1795.0,
+          tzsh: null,
+          balance: 15995.0,
+          notes: "+1,795 MUR Anel debt",
+        },
+        {
+          entry: 4,
+          party: "Marcel",
+          type: "Debit",
+          desc: "Sent TZSH 1,000,000",
+          mur: -17806.0,
+          tzsh: 1000000.0,
+          balance: -1811.0,
+          notes: "-17,806 MUR",
+        },
+        {
+          entry: 5,
+          party: "Anel",
+          type: "Debt_Adjustment",
+          desc: "Anel extra on Marcel’s side",
+          mur: 1811.26,
+          tzsh: null,
+          balance: 0.26,
+          notes: "Adjustment",
+        },
+        {
+          entry: 6,
+          party: "Anel",
+          type: "Credit_Debt",
+          desc: "Credit debt Anel’s",
+          mur: 8020.0,
+          tzsh: null,
+          balance: 8020.26,
+          notes: "Anel’s credit",
+        },
+        {
+          entry: 7,
+          party: "Anel",
+          type: "Debit",
+          desc: "Adjustment",
+          mur: -1811.26,
+          tzsh: null,
+          balance: 6209.0,
+          notes: "-1,811.26",
+        },
+        {
+          entry: 8,
+          party: "Anel",
+          type: "Debt",
+          desc: "Anel’s debt",
+          mur: 6208.0,
+          tzsh: null,
+          balance: 1.0,
+          notes: "Final Anel debt",
+        },
+        {
+          entry: 9,
+          party: "Marcel",
+          type: "Conversion",
+          desc: "Marcel MUR → TZSH 1,000,000",
+          mur: 18348.6,
+          tzsh: 1000000.0,
+          balance: 18349.6,
+          notes: "Conversion",
+        },
+        {
+          entry: 10,
+          party: "Marcel",
+          type: "Debt_Payment",
+          desc: "Anel’s debt paid off",
+          mur: -6208.0,
+          tzsh: null,
+          balance: 12141.6,
+          notes: "-6,208 Anel debt cleared",
+        },
+        {
+          entry: 11,
+          party: "Marcel",
+          type: "Debt",
+          desc: "Marcel’s debt (course fee)",
+          mur: -1851.0,
+          tzsh: null,
+          balance: 10290.6,
+          notes: "-1,851 course fee",
+        },
+        {
+          entry: 12,
+          party: "Marcel",
+          type: "Payment",
+          desc: "From Marcel to Anel",
+          mur: -40000.0,
+          tzsh: null,
+          balance: -29709.4,
+          notes: "Payment to Anel",
+        },
+        {
+          entry: 13,
+          party: "Marcel",
+          type: "Debt_Settlement",
+          desc: "Marcel’s debt settled",
+          mur: 10288.0,
+          tzsh: null,
+          balance: -19421.4,
+          notes: "Final settlement",
+        },
+        {
+          entry: 14,
+          party: "Marcel",
+          type: "Payment",
+          desc: "100,000 mur to Anel",
+          mur: -100000.0,
+          tzsh: null,
+          balance: -119421.4,
+          notes: "New payment to Anel",
+        },
+        {
+          entry: 15,
+          party: "Marcel",
+          type: "Credit",
+          desc: "5,020,000 tzsh to Marcel",
+          mur: null,
+          tzsh: 5020000.0,
+          balance: null,
+          notes: "TZSH credit to Marcel",
+        },
+        {
+          entry: 16,
+          party: "Anel",
+          type: "Debt",
+          desc: "Anel entry",
+          mur: null,
+          tzsh: null,
+          balance: null,
+          notes: "Party switch",
+        },
+        {
+          entry: 17,
+          party: "Anel",
+          type: "Debit",
+          desc: "–543,610 tzsh",
+          mur: null,
+          tzsh: -543610.0,
+          balance: null,
+          notes: "-543,610 TZSH debit",
+        },
+      ];
+
+      // ==================== RENDER & FILTER (unchanged) ====================
+      function renderTable(data) {
+        const tbody = document.getElementById("tableBody");
+        tbody.innerHTML = "";
+        data.forEach((row) => {
+          const tr = document.createElement("tr");
+          tr.className = "hover:bg-slate-50";
+          const murHTML =
+            row.mur !== null
+              ? `<span class="${row.mur >= 0 ? "credit" : "debit"} font-semibold">${row.mur.toLocaleString()}</span>`
+              : "—";
+          const tzshHTML =
+            row.tzsh !== null
+              ? `<span class="${row.tzsh >= 0 ? "credit" : "debit"} font-semibold">${row.tzsh.toLocaleString()}</span>`
+              : "—";
+
+          tr.innerHTML = `
+            <td class="font-medium">${row.entry}</td>
+            <td>${row.party}</td>
+            <td>${row.type.replace("_", " ")}</td>
+            <td class="max-w-[180px]">${row.desc}</td>
+            <td class="text-right">${murHTML}</td>
+            <td class="text-right">${tzshHTML}</td>
+            <td class="text-right font-bold ${row.balance !== null ? (row.balance >= 0 ? "text-emerald-600" : "text-red-600") : "text-slate-400"}">
+                ${row.balance !== null ? row.balance.toLocaleString() : "—"}
+            </td>
+            <td class="text-xs text-slate-500">${row.notes}</td>
+        `;
+          tbody.appendChild(tr);
+        });
+      }
+
+      function filterTable() {
+        const term = document
+          .getElementById("searchInput")
+          .value.toLowerCase()
+          .trim();
+        const filtered = ledgerData.filter(
+          (r) =>
+            r.desc.toLowerCase().includes(term) ||
+            r.party.toLowerCase().includes(term) ||
+            (r.notes && r.notes.toLowerCase().includes(term)),
+        );
+        renderTable(filtered);
+      }
+
+      function downloadCSV() {
+        // Same as before (unchanged)
+        const headers = [
+          "Entry",
+          "Party",
+          "Type",
+          "Description",
+          "MUR",
+          "TZSH",
+          "Balance MUR",
+          "Notes",
+        ];
+        const rows = ledgerData.map((r) =>
+          [
+            r.entry,
+            r.party,
+            r.type,
+            `"${r.desc}"`,
+            r.mur || "",
+            r.tzsh || "",
+            r.balance || "",
+            `"${r.notes}"`,
+          ].join(","),
+        );
+        const csv = [headers.join(","), ...rows].join("\n");
+        const blob = new Blob([csv], { type: "text/csv" });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = "Marcel_Anel_Reconciliation.csv";
+        link.click();
+      }
+
+      // ==================== LOAD ====================
+      window.onload = () => {
+        renderTable(ledgerData);
+        document.getElementById("marcelNet").textContent = "-119,421 MUR";
+        document.getElementById("marcelTzsh").textContent = "+5,020,000 TZS";
+        document.getElementById("anelTzsh").textContent = "-543,610 TZS";
+      };
+    </script>
+  </body>
+</html>

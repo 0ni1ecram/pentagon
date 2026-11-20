@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Construction Lifecycle ERD — SDG &amp; Carbon Credit Edition</title>
+<style>
+:root{
+  --bg:#0b1016; --stage:#0f1419; --panel:#141b23; --panel2:#1a232d; --panel3:#22303d;
+  --line:#2a3846; --txt:#dce6f0; --muted:#7d90a3; --accent:#4fd1c5; --accent2:#f6ad55;
+  --pk:#f6ad55; --fk:#4fd1c5; --sel:#63b3ed; --dim:rgba(42,56,70,.45);
+  --core:#f6ad55; --d12:#63b3ed; --p34:#9f7aea; --p5:#48bb78; --p67:#ed64a6;
+  --sdg:#38b2ac; --cc:#ecc94b;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;font-family:ui-monospace,Menlo,Consolas,monospace;background:var(--bg);color:var(--txt);overflow:hidden}
+#app{display:grid;grid-template-columns:1fr 360px;height:100%}
+#stage{position:relative;overflow:hidden;background:radial-gradient(circle at 30% 20%,#16212c,var(--stage) 70%)}
+#svg{width:100%;height:100%;display:block;cursor:grab}
+#svg.dragging{cursor:grabbing}
+
+/* toolbar */
+#toolbar{position:absolute;top:10px;left:10px;right:10px;display:flex;gap:6px;flex-wrap:wrap;align-items:center;
+  background:rgba(20,27,35,.94);border:1px solid var(--line);border-radius:10px;padding:8px 10px;
+  backdrop-filter:blur(8px);z-index:20;font-size:11px}
+#toolbar input[type=text]{background:var(--panel3);border:1px solid var(--line);color:var(--txt);
+  padding:5px 9px;border-radius:6px;font-size:11px;width:200px;outline:none;font-family:inherit}
+#toolbar input:focus{border-color:var(--accent)}
+.chip{font-size:10px;padding:4px 9px;border-radius:20px;border:1px solid var(--line);
+  background:var(--panel3);color:var(--muted);cursor:pointer;user-select:none;transition:.15s;white-space:nowrap}
+.chip:hover{border-color:var(--accent);color:var(--txt)}
+.chip.on{color:#0b1016;font-weight:700}
+.chip[data-phase=core].on{background:var(--core);border-color:var(--core)}
+.chip[data-phase=d12].on{background:var(--d12);border-color:var(--d12)}
+.chip[data-phase=p34].on{background:var(--p34);border-color:var(--p34)}
+.chip[data-phase=p5].on{background:var(--p5);border-color:var(--p5)}
+.chip[data-phase=p67].on{background:var(--p67);border-color:var(--p67)}
+.chip[data-phase=sdg].on{background:var(--sdg);border-color:var(--sdg)}
+.chip[data-phase=cc].on{background:var(--cc);border-color:var(--cc)}
+.chip[data-act].on{background:var(--accent);border-color:var(--accent)}
+.spacer{flex:1}
+#legend{font-size:9.5px;color:var(--muted);display:flex;gap:10px;align-items:center}
+.lg{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+.dot{width:7px;height:7px;border-radius:2px;display:inline-block}
+
+/* minimap */
+#minimap{position:absolute;bottom:10px;right:10px;width:180px;height:130px;background:rgba(20,27,35,.92);
+  border:1px solid var(--line);border-radius:6px;overflow:hidden;z-index:15}
+#minimap svg{width:100%;height:100%;cursor:pointer}
+#minimap .vp{fill:rgba(99,179,237,.15);stroke:var(--accent);stroke-width:1}
+
+/* hints */
+#hint{position:absolute;bottom:10px;left:10px;font-size:9.5px;color:var(--muted);
+  background:rgba(20,27,35,.85);padding:5px 9px;border-radius:6px;border:1px solid var(--line);z-index:15;line-height:1.5}
+kbd{background:var(--panel3);padding:1px 4px;border-radius:3px;border:1px solid var(--line);font-size:9px}
+
+/* side panel */
+#panel{background:var(--panel);border-left:1px solid var(--line);overflow-y:auto;padding:14px;position:relative}
+#panel::-webkit-scrollbar{width:8px}
+#panel::-webkit-scrollbar-track{background:var(--panel)}
+#panel::-webkit-scrollbar-thumb{background:var(--panel3);border-radius:4px}
+#panel h2{font-size:12px;margin:0 0 10px;color:var(--accent);letter-spacing:.6px;text-transform:uppercase;font-weight:700}
+#panel h3{font-size:10px;margin:16px 0 6px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;font-weight:700}
+.tbl-name{font-size:17px;font-weight:700;margin-bottom:4px;word-break:break-word;color:var(--txt)}
+.tbl-desc{font-size:10.5px;color:var(--muted);line-height:1.6;margin-bottom:8px}
+.badge{display:inline-block;font-size:9.5px;padding:2px 8px;border-radius:10px;font-weight:700;color:#0b1016;margin-bottom:4px}
+.cols{list-style:none;padding:0;margin:0;font-size:11px}
+.cols li{padding:5px 8px;border-radius:5px;display:flex;justify-content:space-between;gap:6px;
+  border:1px solid transparent;margin-bottom:2px;transition:.12s}
+.cols li:hover{background:var(--panel2)}
+.cols li.pk{border-color:rgba(246,173,85,.35);background:rgba(246,173,85,.07)}
+.cols li.fk{border-color:rgba(79,209,197,.3);background:rgba(79,209,197,.05)}
+.col-name{color:var(--txt);word-break:break-all;font-size:10.5px}
+.col-type{color:var(--muted);font-size:9px;white-space:nowrap;flex-shrink:0}
+.tag{font-size:8.5px;font-weight:700;padding:1px 5px;border-radius:3px;margin-left:4px}
+.tag.pk{background:var(--pk);color:#0b1016}
+.tag.fk{background:var(--fk);color:#0b1016}
+.rel{margin:5px 0;padding:7px 9px;background:var(--panel2);border-radius:6px;font-size:10.5px;
+  border-left:2px solid var(--accent);cursor:pointer;transition:.12s}
+.rel:hover{background:var(--panel3);border-left-color:var(--accent2)}
+.rel .arrow{color:var(--accent);font-weight:700;margin-right:4px}
+.rel b{color:var(--txt)}
+.rel .lbl{color:var(--muted);font-size:9.5px;margin-top:2px}
+.empty{color:var(--muted);font-size:11px;font-style:italic;margin-top:30px;text-align:center;line-height:1.8}
+.actions{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap}
+.action-btn{font-size:10px;padding:5px 10px;background:var(--panel3);border:1px solid var(--line);
+  color:var(--txt);border-radius:5px;cursor:pointer;font-family:inherit;transition:.12s}
+.action-btn:hover{background:var(--accent);color:#0b1016;border-color:var(--accent)}
+
+/* svg */
+.link{fill:none;stroke:var(--line);stroke-width:1;transition:.15s;stroke-opacity:.7}
+.link.active{stroke:var(--accent);stroke-width:2.2;stroke-opacity:1;filter:drop-shadow(0 0 4px rgba(79,209,197,.55))}
+.link.dim{stroke-opacity:.04}
+.link-hit{fill:none;stroke:transparent;stroke-width:14;cursor:pointer}
+.node{cursor:pointer;transition:.15s}
+.node rect{fill:var(--panel2);stroke:var(--line);stroke-width:1;transition:.15s}
+.node:hover rect{stroke:var(--accent)}
+.node.active rect{stroke:var(--sel);stroke-width:2.5;filter:drop-shadow(0 0 10px rgba(99,179,237,.55))}
+.node.dim{opacity:.15}
+.node text{fill:var(--txt);font-size:10px;pointer-events:none;font-family:inherit}
+.node .tname{font-size:10.5px;font-weight:700}
+.node .tphase{font-size:8px;fill:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.node .bar{width:4px}
+.node .pk-dot{fill:var(--pk)}
+.node .fk-dot{fill:var(--fk)}
+
+/* tooltip */
+.tooltip{position:absolute;pointer-events:none;background:#05090d;border:1px solid var(--accent);
+  border-radius:6px;padding:8px 11px;font-size:10.5px;max-width:340px;opacity:0;transition:.12s;
+  box-shadow:0 8px 24px rgba(0,0,0,.6);z-index:30;line-height:1.6}
+.tooltip.show{opacity:1}
+.tooltip .tt-t{color:var(--accent);font-weight:700;margin-bottom:4px;font-size:11px}
+.tooltip code{color:var(--accent2);background:rgba(246,173,85,.1);padding:1px 4px;border-radius:3px}
+.tooltip .tt-desc{color:var(--muted);font-size:9.5px;margin-top:4px}
+
+/* focus mode indicator */
+#focus-ind{position:absolute;top:52px;left:10px;background:rgba(99,179,237,.15);border:1px solid var(--sel);
+  color:var(--sel);padding:4px 10px;border-radius:5px;font-size:10px;z-index:15;display:none}
+#focus-ind.show{display:block}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="stage">
+    <div id="toolbar">
+      <input id="search" type="text" placeholder="filter tables…" />
+      <span class="chip on" data-phase="core">Core</span>
+      <span class="chip on" data-phase="d12">P1–2</span>
+      <span class="chip on" data-phase="p34">P3–4</span>
+      <span class="chip on" data-phase="p5">P5</span>
+      <span class="chip on" data-phase="p67">P6–7</span>
+      <span class="chip on" data-phase="sdg">SDG</span>
+      <span class="chip on" data-phase="cc">Carbon</span>
+      <span class="spacer"></span>
+      <span class="chip" data-act="focus" title="Focus on selected table's 1-hop neighbourhood">focus</span>
+      <span class="chip" data-act="layout">columns</span>
+      <span class="chip" data-act="reset">reset</span>
+      <div id="legend">
+        <span class="lg"><span class="dot" style="background:var(--pk)"></span>PK</span>
+        <span class="lg"><span class="dot" style="background:var(--fk)"></span>FK</span>
+      </div>
+    </div>
+    <div id="focus-ind">focus mode <span id="focus-name"></span> · click focus again to exit</div>
+    <svg id="svg"><g id="viewport"></g></svg>
+    <div id="minimap"><svg id="mm-svg"></svg></div>
+    <div id="hint">drag pan · wheel zoom · click table to inspect · <kbd>F</kbd> focus · <kbd>R</kbd> reset</div>
+    <div id="tooltip" class="tooltip"></div>
+  </div>
+  <div id="panel">
+    <h2>ERD Inspector</h2>
+    <div id="panel-body">
+      <div class="empty">Click any table to inspect<br/>columns &amp; FK links.<br/><br/>47 tables · 6 phases<br/>SDG + Carbon layers included.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   COMPLETE SCHEMA — 47 tables across 6 phase groups
+   col format: [name, type, isPk, fkTarget, nullable]
+   ============================================================ */
+const SCHEMA = [
+  /* ---------- CORE SPINE ---------- */
+  {name:"project", phase:"core", desc:"Master root of all construction data", cols:[
+    ["project_id","UUID",1],["name","VARCHAR"],["rom_budget","NUMERIC"],
+    ["approved_budget","NUMERIC"],["gfa_sqm","NUMERIC"],["target_start_date","DATE"],
+    ["target_end_date","DATE"],["current_phase","ENUM"],["certificate_of_occupancy_date","DATE"]
+  ]},
+  {name:"site", phase:"core", desc:"Land parcel, zoning, environmental status", cols:[
+    ["site_id","UUID",1],["project_id","UUID",0,"project"],["parcel_id","VARCHAR"],
+    ["coordinates","GEOGRAPHY"],["far","NUMERIC"],["zoning_code","VARCHAR"],
+    ["soil_bearing_capacity","NUMERIC"],["water_table_depth","NUMERIC"],["eia_status","ENUM"]
+  ]},
+  {name:"wbs", phase:"core", desc:"Cost & scope spine (Uniclass/MasterFormat)", cols:[
+    ["wbs_id","UUID",1],["project_id","UUID",0,"project"],["parent_wbs_id","UUID",0,"wbs"],
+    ["wbs_code","VARCHAR"],["description","TEXT"]
+  ]},
+  {name:"spatial_zone_room", phase:"core", desc:"Location spine: rooms, areas, ratings", cols:[
+    ["room_id","UUID",1],["project_id","UUID",0,"project"],["level_floor","INT"],
+    ["room_number","VARCHAR"],["net_area","NUMERIC"],["gross_area","NUMERIC"],
+    ["occupancy_load","INT"],["acoustic_rating","VARCHAR"],["fire_rating","VARCHAR"]
+  ]},
+  {name:"stakeholder", phase:"core", desc:"Actor spine: owner, architect, GC, subs", cols:[
+    ["stakeholder_id","UUID",1],["organization_name","VARCHAR"],["role","ENUM"],
+    ["contact_info","TEXT"]
+  ]},
+
+  /* ---------- PHASE 1 & 2 ---------- */
+  {name:"financial_metric", phase:"d12", desc:"ROI, NPV, IRR, cap rate (baseline vs revised)", cols:[
+    ["metric_id","UUID",1],["project_id","UUID",0,"project"],["version","ENUM"],
+    ["roi","NUMERIC"],["npv","NUMERIC"],["irr","NUMERIC"],["cap_rate","NUMERIC"],["calculated_at","TIMESTAMPTZ"]
+  ]},
+  {name:"funding_source", phase:"d12", desc:"Equity, debt, grant, green bond sources", cols:[
+    ["funding_id","UUID",1],["project_id","UUID",0,"project"],["stakeholder_id","UUID",0,"stakeholder"],
+    ["source_type","ENUM"],["committed_amount","NUMERIC"]
+  ]},
+  {name:"bim_element", phase:"d12", desc:"Unified parent for structural + MEP elements", cols:[
+    ["element_id","UUID",1],["project_id","UUID",0,"project"],["room_id","UUID",0,"spatial_zone_room"],
+    ["wbs_id","UUID",0,"wbs"],["ifc_guid","UUID"],["discipline","ENUM"],["lod_level","VARCHAR"]
+  ]},
+  {name:"structural_element", phase:"d12", desc:"Subtype of bim_element: concrete, rebar, steel", cols:[
+    ["element_id","UUID",1,"bim_element"],["concrete_grade","VARCHAR"],["rebar_tonnage","NUMERIC"],
+    ["steel_weight","NUMERIC"],["wind_load","NUMERIC"],["seismic_zone","VARCHAR"],["foundation_depth","NUMERIC"]
+  ]},
+  {name:"mep_system", phase:"d12", desc:"Subtype of bim_element: HVAC, elec, plumbing", cols:[
+    ["element_id","UUID",1,"bim_element"],["system_type","ENUM"],["cooling_heating_load","NUMERIC"],
+    ["kva_demand","NUMERIC"],["lux_level","NUMERIC"],["flow_rate_lps","NUMERIC"],["slope","NUMERIC"]
+  ]},
+  {name:"design_control", phase:"d12", desc:"Revision, clash detection, LOD, approval", cols:[
+    ["control_id","UUID",1],["project_id","UUID",0,"project"],["element_id","UUID",0,"bim_element"],
+    ["revision_number","VARCHAR"],["clash_count","INT"],["status","ENUM"],["approved_by","UUID",0,"stakeholder"]
+  ]},
+
+  /* ---------- PHASE 3 & 4 ---------- */
+  {name:"boq_item", phase:"p34", desc:"Bill of Quantities line item with rates", cols:[
+    ["boq_id","UUID",1],["project_id","UUID",0,"project"],["wbs_id","UUID",0,"wbs"],
+    ["element_id","UUID",0,"bim_element"],["unit_of_measure","VARCHAR"],["estimated_qty","NUMERIC"],
+    ["unit_material_rate","NUMERIC"],["unit_labor_rate","NUMERIC"],["productivity_norm","NUMERIC"]
+  ]},
+  {name:"contingency", phase:"p34", desc:"Design/construction/VE reserve", cols:[
+    ["contingency_id","UUID",1],["project_id","UUID",0,"project"],["wbs_id","UUID",0,"wbs"],
+    ["type","ENUM"],["allocated_amount","NUMERIC"],["remaining_amount","NUMERIC"]
+  ]},
+  {name:"schedule_activity", phase:"p34", desc:"Planned/actual dates, float, critical path", cols:[
+    ["activity_id","UUID",1],["project_id","UUID",0,"project"],["wbs_id","UUID",0,"wbs"],
+    ["room_id","UUID",0,"spatial_zone_room"],["planned_start","DATE"],["planned_end","DATE"],
+    ["actual_start","DATE"],["actual_end","DATE"],["duration_days","NUMERIC"],
+    ["total_float_days","NUMERIC"],["is_critical_path","BOOL"]
+  ]},
+  {name:"activity_dependency", phase:"p34", desc:"Bridge table: predecessor/successor links", cols:[
+    ["dependency_id","UUID",1],["predecessor_id","UUID",0,"schedule_activity"],
+    ["successor_id","UUID",0,"schedule_activity"],["dependency_type","ENUM"],["lag_days","INT"]
+  ]},
+  {name:"permit", phase:"p34", desc:"Application, fee, expiry, status", cols:[
+    ["permit_id","UUID",1],["project_id","UUID",0,"project"],["wbs_id","UUID",0,"wbs"],
+    ["status","ENUM"],["fee_amount","NUMERIC"],["expiry_date","DATE"]
+  ]},
+  {name:"risk_register", phase:"p34", desc:"Risk probability/impact, mitigation", cols:[
+    ["risk_id","UUID",1],["project_id","UUID",0,"project"],["wbs_id","UUID",0,"wbs"],
+    ["probability_score","NUMERIC"],["impact_score","NUMERIC"],["mitigation_log","TEXT"]
+  ]},
+  {name:"bid_package", phase:"p34", desc:"Trade scope, prequal score, bid variance", cols:[
+    ["bid_package_id","UUID",1],["project_id","UUID",0,"project"],["trade_scope","TEXT"],
+    ["prequal_score","NUMERIC"],["bid_variance_pct","NUMERIC"]
+  ]},
+  {name:"contract", phase:"p34", desc:"Award value, retention, bond, insurance", cols:[
+    ["contract_id","UUID",1],["project_id","UUID",0,"project"],["bid_package_id","UUID",0,"bid_package"],
+    ["stakeholder_id","UUID",0,"stakeholder"],["award_value","NUMERIC"],["retention_pct","NUMERIC"],
+    ["insurance_expiry","DATE"],["bond_number","VARCHAR"]
+  ]},
+  {name:"purchase_order", phase:"p34", desc:"PO with unit cost and lead time", cols:[
+    ["po_id","UUID",1],["contract_id","UUID",0,"contract"],["boq_id","UUID",0,"boq_item"],
+    ["unit_cost","NUMERIC"],["lead_time_days","INT"]
+  ]},
+  {name:"supply_shipment", phase:"p34", desc:"Fabrication %, ETD, ETA, customs", cols:[
+    ["shipment_id","UUID",1],["po_id","UUID",0,"purchase_order"],["fabrication_pct","NUMERIC"],
+    ["etd","DATE"],["eta","DATE"],["customs_cleared_at","TIMESTAMPTZ"]
+  ]},
+
+  /* ---------- PHASE 5 ---------- */
+  {name:"daily_progress", phase:"p5", desc:"Headcount, man-hours, EV/AC per activity", cols:[
+    ["progress_id","UUID",1],["activity_id","UUID",0,"schedule_activity"],["boq_id","UUID",0,"boq_item"],
+    ["log_date","DATE"],["headcount","INT"],["man_hours","NUMERIC"],["equipment_hours","NUMERIC"],
+    ["percent_complete","NUMERIC"],["earned_value_ev","NUMERIC"],["actual_cost_ac","NUMERIC"]
+  ]},
+  {name:"rfi", phase:"p5", desc:"Request for Information with SLA tracking", cols:[
+    ["rfi_id","UUID",1],["project_id","UUID",0,"project"],["element_id","UUID",0,"bim_element"],
+    ["activity_id","UUID",0,"schedule_activity"],["stakeholder_id","UUID",0,"stakeholder"],
+    ["submitted_at","TIMESTAMPTZ"],["due_date","DATE"],["closed_at","TIMESTAMPTZ"],["cost_schedule_impact_flag","BOOL"]
+  ]},
+  {name:"submittal", phase:"p5", desc:"Submittal approval workflow", cols:[
+    ["submittal_id","UUID",1],["project_id","UUID",0,"project"],["element_id","UUID",0,"bim_element"],
+    ["activity_id","UUID",0,"schedule_activity"],["stakeholder_id","UUID",0,"stakeholder"],
+    ["submitted_at","TIMESTAMPTZ"],["due_date","DATE"],["closed_at","TIMESTAMPTZ"],["cost_schedule_impact_flag","BOOL"]
+  ]},
+  {name:"quality_test", phase:"p5", desc:"Concrete break, weld inspection results", cols:[
+    ["test_id","UUID",1],["project_id","UUID",0,"project"],["wbs_id","UUID",0,"wbs"],
+    ["room_id","UUID",0,"spatial_zone_room"],["element_id","UUID",0,"bim_element"],
+    ["test_type","ENUM"],["measured_value","NUMERIC"],["pass_fail","BOOL"]
+  ]},
+  {name:"ncr", phase:"p5", desc:"Non-Conformance Report lifecycle", cols:[
+    ["ncr_id","UUID",1],["project_id","UUID",0,"project"],["wbs_id","UUID",0,"wbs"],
+    ["room_id","UUID",0,"spatial_zone_room"],["element_id","UUID",0,"bim_element"],
+    ["description","TEXT"],["ncr_status","ENUM"],["raised_date","DATE"],["closed_date","DATE"]
+  ]},
+  {name:"hse_record", phase:"p5", desc:"LTIFR, waste, carbon, PPE compliance", cols:[
+    ["hse_id","UUID",1],["project_id","UUID",0,"project"],["log_date","DATE"],
+    ["ltifr","NUMERIC"],["waste_tonnage","NUMERIC"],["carbon_kg_co2e","NUMERIC"],
+    ["ppe_compliance_pct","NUMERIC"],["toolbox_attendance","INT"]
+  ]},
+  {name:"site_weather_log", phase:"p5", desc:"Temperature, wind, rain, drone capture", cols:[
+    ["weather_id","UUID",1],["project_id","UUID",0,"project"],["log_date","DATE"],
+    ["temp_c","NUMERIC"],["wind_kmh","NUMERIC"],["rainfall_mm","NUMERIC"],["drone_capture_url","TEXT"]
+  ]},
+  {name:"payment_application", phase:"p5", desc:"Claimed vs certified, retention held", cols:[
+    ["app_id","UUID",1],["contract_id","UUID",0,"contract"],["wbs_id","UUID",0,"wbs"],
+    ["claimed_amount","NUMERIC"],["certified_amount","NUMERIC"],["retention_held","NUMERIC"]
+  ]},
+  {name:"change_order", phase:"p5", desc:"Approved variation with value", cols:[
+    ["change_order_id","UUID",1],["contract_id","UUID",0,"contract"],["wbs_id","UUID",0,"wbs"],
+    ["approved_variation_value","NUMERIC"],["description","TEXT"]
+  ]},
+
+  /* ---------- PHASE 6 & 7 ---------- */
+  {name:"asset", phase:"p67", desc:"Handover bridge: BIM ↔ PO ↔ operations", cols:[
+    ["asset_id","UUID",1],["element_id","UUID",0,"bim_element"],["room_id","UUID",0,"spatial_zone_room"],
+    ["po_id","UUID",0,"purchase_order"],["asset_tag_qr","VARCHAR"],["serial_number","VARCHAR"],
+    ["manufacturer","VARCHAR"],["warranty_start","DATE"],["warranty_end","DATE"],
+    ["lifecycle_replacement_cost","NUMERIC"]
+  ]},
+  {name:"commissioning_test", phase:"p67", desc:"CFM, pressure, ohms vs design targets", cols:[
+    ["comm_id","UUID",1],["asset_id","UUID",0,"asset"],["test_parameter","VARCHAR"],
+    ["design_target","NUMERIC"],["measured_reading","NUMERIC"],["passed_boolean","BOOL"]
+  ]},
+  {name:"punch_item", phase:"p67", desc:"Snag list tied to room and asset", cols:[
+    ["punch_id","UUID",1],["room_id","UUID",0,"spatial_zone_room"],["asset_id","UUID",0,"asset"],
+    ["description","TEXT"],["raised_date","DATE"],["resolved_date","DATE"]
+  ]},
+  {name:"municipal_inspection", phase:"p67", desc:"Pass/fail logs, certificate of occupancy", cols:[
+    ["inspection_id","UUID",1],["project_id","UUID",0,"project"],["room_id","UUID",0,"spatial_zone_room"],
+    ["asset_id","UUID",0,"asset"],["inspection_date","DATE"],["pass_fail","BOOL"]
+  ]},
+  {name:"defect", phase:"p67", desc:"Defects liability with retention release gate", cols:[
+    ["defect_id","UUID",1],["asset_id","UUID",0,"asset"],["contract_id","UUID",0,"contract"],
+    ["reported_at","TIMESTAMPTZ"],["sla_deadline","TIMESTAMPTZ"],["resolved_at","TIMESTAMPTZ"],
+    ["retention_release_approved","BOOL"]
+  ]},
+  {name:"maintenance_schedule", phase:"p67", desc:"Preventive maintenance frequency", cols:[
+    ["schedule_id","UUID",1],["asset_id","UUID",0,"asset"],["task_description","TEXT"],
+    ["frequency_days","INT"],["next_due_date","DATE"]
+  ]},
+  {name:"work_order", phase:"p67", desc:"Reactive repairs: downtime, cost", cols:[
+    ["work_order_id","UUID",1],["asset_id","UUID",0,"asset"],["opened_at","TIMESTAMPTZ"],
+    ["closed_at","TIMESTAMPTZ"],["downtime_hours","NUMERIC"],["repair_cost","NUMERIC"]
+  ]},
+  {name:"facility_telemetry", phase:"p67", desc:"IoT time-series: kWh, water, CO2, flow", cols:[
+    ["telemetry_id","BIGINT",1],["asset_id","UUID",0,"asset"],["timestamp","TIMESTAMPTZ"],
+    ["metric_name","VARCHAR"],["metric_value","NUMERIC"]
+  ]},
+
+  /* ---------- UN SDG LAYER ---------- */
+  {name:"un_sdg_indicator", phase:"sdg", desc:"Official UN SDG indicator reference", cols:[
+    ["indicator_code","VARCHAR",1],["goal_number","SMALLINT"],["goal_title","VARCHAR"],
+    ["target_code","VARCHAR"],["indicator_description","TEXT"],["unit_of_measure","VARCHAR"]
+  ]},
+  {name:"project_sdg_target", phase:"sdg", desc:"Project-level SDG target + actuals", cols:[
+    ["sdg_target_id","UUID",1],["project_id","UUID",0,"project"],["indicator_code","VARCHAR",0,"un_sdg_indicator"],
+    ["wbs_id","UUID",0,"wbs"],["baseline_benchmark","NUMERIC"],["target_value","NUMERIC"],
+    ["actual_value","NUMERIC"],["compliance_status","VARCHAR"],["last_evaluated_at","TIMESTAMPTZ"]
+  ]},
+  {name:"sdg_evidence_link", phase:"sdg", desc:"Evidence linking SDG target to source record", cols:[
+    ["evidence_id","UUID",1],["sdg_target_id","UUID",0,"project_sdg_target"],
+    ["source_table","VARCHAR"],["source_record_id","UUID"],["contribution_value","NUMERIC"],
+    ["recorded_at","TIMESTAMPTZ"]
+  ]},
+
+  /* ---------- CARBON CREDIT LAYER ---------- */
+  {name:"carbon_project", phase:"cc", desc:"Registry container: methodology, standard, dates", cols:[
+    ["carbon_project_id","UUID",1],["project_id","UUID",0,"project"],["wbs_id","UUID",0,"wbs"],
+    ["methodology","VARCHAR"],["standard_body","VARCHAR"],["registry_id","VARCHAR"],
+    ["baseline_start","DATE"],["baseline_end","DATE"],["crediting_start","DATE"],
+    ["crediting_end","DATE"],["status","VARCHAR"]
+  ]},
+  {name:"carbon_credit_issuance", phase:"cc", desc:"Verified tCO2e per vintage year", cols:[
+    ["issuance_id","UUID",1],["carbon_project_id","UUID",0,"carbon_project"],
+    ["vintage_year","SMALLINT"],["verification_period_start","DATE"],["verification_period_end","DATE"],
+    ["tco2e_verified","NUMERIC"],["serial_number_range","VARCHAR"],["vvb_name","VARCHAR"],
+    ["verification_report_url","TEXT"]
+  ]},
+  {name:"carbon_credit_transaction", phase:"cc", desc:"Purchase/sale/transfer/retirement", cols:[
+    ["transaction_id","UUID",1],["issuance_id","UUID",0,"carbon_credit_issuance"],
+    ["transaction_type","VARCHAR"],["counterparty","VARCHAR"],["quantity_tco2e","NUMERIC"],
+    ["price_per_tco2e","NUMERIC"],["transaction_date","DATE"],["retirement_beneficiary","VARCHAR"],
+    ["registry_reference","VARCHAR"]
+  ]},
+  {name:"carbon_credit_sdg_link", phase:"cc", desc:"Bridge: credit issuance to SDG target", cols:[
+    ["link_id","UUID",1],["issuance_id","UUID",0,"carbon_credit_issuance"],
+    ["sdg_target_id","UUID",0,"project_sdg_target"],["contribution_tco2e","NUMERIC"]
+  ]}
+];
+
+const PHASE_COLOR = {core:"#f6ad55", d12:"#63b3ed", p34:"#9f7aea", p5:"#48bb78", p67:"#ed64a6", sdg:"#38b2ac", cc:"#ecc94b"};
+const PHASE_LABEL = {core:"Core", d12:"P1–2", p34:"P3–4", p5:"P5", p67:"P6–7", sdg:"SDG", cc:"Carbon"};
+const PHASE_ORDER = ["core","d12","p34","p5","p67","sdg","cc"];
+
+const NODE_W = 160, NODE_H_BASE = 28, ROW_H = 12, PAD = 8;
+
+/* ============================================================
+   LAYOUTS
+   ============================================================ */
+function layoutPhaseColumns(){
+  const groups = {}; PHASE_ORDER.forEach(p=>groups[p]=[]);
+  SCHEMA.forEach(t=>groups[t.phase].push(t));
+  const colGap = 210, rowGap = 12, startX = 40, startY = 50;
+  const pos = {};
+  PHASE_ORDER.forEach((ph,ci)=>{
+    let y = startY;
+    groups[ph].forEach(t=>{
+      const h = NODE_H_BASE + t.cols.length*ROW_H + PAD;
+      pos[t.name] = {x: startX + ci*colGap, y, h, w: NODE_W, phase: ph};
+      y += h + rowGap;
+    });
+  });
+  return pos;
+}
+
+function layoutRadial(){
+  const cx=900, cy=900, pos={};
+  PHASE_ORDER.forEach((ph,pi)=>{
+    const list = SCHEMA.filter(t=>t.phase===ph);
+    const r = 200 + pi*130;
+    const baseA = (pi * 360/PHASE_ORDER.length) - 90;
+    list.forEach((t,i)=>{
+      const h = NODE_H_BASE + t.cols.length*ROW_H + PAD;
+      const spread = 70;
+      const a = (baseA - spread/2 + (list.length>1 ? spread/(list.length-1)*i : spread/2)) * Math.PI/180;
+      pos[t.name] = {x: cx + Math.cos(a)*r - NODE_W/2, y: cy + Math.sin(a)*r - h/2, h, w: NODE_W, phase: ph};
+    });
+  });
+  return pos;
+}
+
+/* focus layout: selected table centred, 1-hop neighbours arranged in a ring by phase */
+function layoutFocus(centerName){
+  const pos = {};
+  const center = SCHEMA.find(t=>t.name===centerName);
+  if(!center) return layoutPhaseColumns();
+  const cx=900, cy=700;
+  const ch = NODE_H_BASE + center.cols.length*ROW_H + PAD;
+  pos[centerName] = {x:cx - NODE_W/2, y:cy - ch/2, h:ch, w:NODE_W, phase:center.phase};
+
+  const neighbours = new Set();
+  EDGES.forEach(e=>{
+    if(e.from===centerName) neighbours.add(e.to);
+    if(e.to===centerName) neighbours.add(e.from);
+  });
+  neighbours.delete(centerName);
+  const arr = [...neighbours];
+  arr.sort((a,b)=>{
+    const pa = PHASE_ORDER.indexOf(SCHEMA.find(t=>t.name===a).phase);
+    const pb = PHASE_ORDER.indexOf(SCHEMA.find(t=>t.name===b).phase);
+    return pa-pb || a.localeCompare(b);
+  });
+  const R = 400;
+  arr.forEach((name,i)=>{
+    const t = SCHEMA.find(x=>x.name===name);
+    const h = NODE_H_BASE + t.cols.length*ROW_H + PAD;
+    const a = (i/arr.length)*2*Math.PI - Math.PI/2;
+    pos[name] = {x:cx + Math.cos(a)*R - NODE_W/2, y:cy + Math.sin(a)*R - h/2, h, w:NODE_W, phase:t.phase};
+  });
+  return pos;
+}
+
+/* ============================================================
+   EDGES
+   ============================================================ */
+function pkOf(name){
+  const t = SCHEMA.find(x=>x.name===name);
+  if(!t) return "?";
+  const pk = t.cols.find(c=>c[2]===1);
+  return pk ? pk[0] : "?";
+}
+let EDGES = [];
+function buildEdges(){
+  EDGES = [];
+  SCHEMA.forEach(t=>{
+    t.cols.forEach(c=>{
+      if(c[3]) EDGES.push({from:t.name, to:c[3], col:c[0], targetPk:pkOf(c[3])});
+    });
+  });
+}
+buildEdges();
+
+/* ============================================================
+   STATE
+   ============================================================ */
+let LAYOUT = layoutPhaseColumns();
+let mode = "columns"; // columns | radial | focus
+let focusName = null;
+let selected = null;
+let visiblePhases = new Set(PHASE_ORDER);
+let filterText = "";
+let tx=0, ty=0, scale=1;
+let dragging=false, dragStart=null;
+
+const svg = document.getElementById("svg");
+const viewport = document.getElementById("viewport");
+const tooltip = document.getElementById("tooltip");
+const panelBody = document.getElementById("panel-body");
+const mmSvg = document.getElementById("mm-svg");
+const focusInd = document.getElementById("focus-ind");
+const focusNameEl = document.getElementById("focus-name");
+
+/* ============================================================
+   VIEWPORT TRANSFORM
+   ============================================================ */
+function applyTransform(){
+  viewport.setAttribute("transform", `translate(${tx},${ty}) scale(${scale})`);
+  drawMinimap();
+}
+
+/* ============================================================
+   RENDER
+   ============================================================ */
+function edgePath(a,b){
+  const axr = a.x+a.w, ay = a.y+Math.min(a.h,42)/2;
+  const bxl = b.x, by = b.y+Math.min(b.h,42)/2;
+  if(b.x > a.x){
+    const mx=(axr+bxl)/2;
+    return `M${axr},${ay} C${mx},${ay} ${mx},${by} ${bxl},${by}`;
+  } else if(b.x < a.x){
+    const axl = a.x, bxr = b.x+b.w;
+    const mx=(axl+bxr)/2;
+    return `M${axl},${ay} C${mx},${ay} ${mx},${by} ${bxr},${by}`;
+  } else {
+    // same column — vertical loop
+    const aBot = a.y+a.h, bTop = b.y;
+    const mx = a.x + a.w + 24;
+    return `M${a.x+a.w},${ay} C${mx},${ay} ${mx},${by} ${b.x+b.w},${by}`;
+  }
+}
+
+function render(){
+  viewport.innerHTML = "";
+  const edgeLayer = document.createElementNS("http://www.w3.org/2000/svg","g");
+  const nodeLayer = document.createElementNS("http://www.w3.org/2000/svg","g");
+  viewport.appendChild(edgeLayer);
+  viewport.appendChild(nodeLayer);
+
+  // filter helper
+  const visible = (name)=>{
+    const t = SCHEMA.find(x=>x.name===name);
+    if(!t) return false;
+    if(!visiblePhases.has(t.phase)) return false;
+    if(filterText && !t.name.toLowerCase().includes(filterText)) return false;
+    return true;
+  };
+
+  // edges
+  EDGES.forEach(e=>{
+    if(!visible(e.from) || !visible(e.to)) return;
+    const a = LAYOUT[e.from], b = LAYOUT[e.to];
+    if(!a || !b) return;
+    const path = document.createElementNS("http://www.w3.org/2000/svg","path");
+    path.setAttribute("d", edgePath(a,b));
+    path.setAttribute("class","link");
+    path.dataset.from = e.from; path.dataset.to = e.to; path.dataset.col = e.col;
+    edgeLayer.appendChild(path);
+
+    const hit = document.createElementNS("http://www.w3.org/2000/svg","path");
+    hit.setAttribute("d", edgePath(a,b));
+    hit.setAttribute("class","link-hit");
+    hit.addEventListener("mousemove", ev=>showEdgeTooltip(ev,e));
+    hit.addEventListener("mouseleave", hideTooltip);
+    edgeLayer.appendChild(hit);
+  });
+
+  // nodes
+  SCHEMA.forEach(t=>{
+    if(!visible(t.name)) return;
+    const p = LAYOUT[t.name]; if(!p) return;
+    const g = document.createElementNS("http://www.w3.org/2000/svg","g");
+    g.setAttribute("class","node");
+    g.setAttribute("transform",`translate(${p.x},${p.y})`);
+    g.dataset.name = t.name;
+
+    const rect = document.createElementNS("http://www.w3.org/2000/svg","rect");
+    rect.setAttribute("width", p.w); rect.setAttribute("height", p.h); rect.setAttribute("rx", 6);
+    g.appendChild(rect);
+
+    const bar = document.createElementNS("http://www.w3.org/2000/svg","rect");
+    bar.setAttribute("width",4); bar.setAttribute("height",p.h); bar.setAttribute("rx",2);
+    bar.setAttribute("fill", PHASE_COLOR[t.phase]);
+    g.appendChild(bar);
+
+    const title = document.createElementNS("http://www.w3.org/2000/svg","text");
+    title.setAttribute("x",10); title.setAttribute("y",15); title.setAttribute("class","tname");
+    title.textContent = t.name;
+    g.appendChild(title);
+
+    const ph = document.createElementNS("http://www.w3.org/2000/svg","text");
+    ph.setAttribute("x", p.w-7); ph.setAttribute("y",15); ph.setAttribute("text-anchor","end");
+    ph.setAttribute("class","tphase");
+    ph.textContent = PHASE_LABEL[t.phase];
+    g.appendChild(ph);
+
+    t.cols.forEach((c,i)=>{
+      const y = 31 + i*ROW_H;
+      if(c[2]===1){
+        const d = document.createElementNS("http://www.w3.org/2000/svg","circle");
+        d.setAttribute("cx",12); d.setAttribute("cy",y-3); d.setAttribute("r",2.5);
+        d.setAttribute("class","pk-dot");
+        g.appendChild(d);
+      } else if(c[3]){
+        const d = document.createElementNS("http://www.w3.org/2000/svg","circle");
+        d.setAttribute("cx",12); d.setAttribute("cy",y-3); d.setAttribute("r",2.5);
+        d.setAttribute("class","fk-dot");
+        g.appendChild(d);
+      }
+      const txt = document.createElementNS("http://www.w3.org/2000/svg","text");
+      txt.setAttribute("x",19); txt.setAttribute("y",y);
+      txt.textContent = c[0];
+      if(c[2]===1) txt.setAttribute("fill","#f6ad55");
+      else if(c[3]) txt.setAttribute("fill","#4fd1c5");
+      else txt.setAttribute("fill","#9fb0c2");
+      g.appendChild(txt);
+    });
+
+    g.addEventListener("click", ev=>{ ev.stopPropagation(); selectTable(t.name); });
+    g.addEventListener("mousemove", ev=>showNodeTooltip(ev,t));
+    g.addEventListener("mouseleave", hideTooltip);
+    nodeLayer.appendChild(g);
+  });
+
+  applyHighlight();
+  updateFocusIndicator();
+}
+
+/* ============================================================
+   HIGHLIGHT
+   ============================================================ */
+function applyHighlight(){
+  const links = viewport.querySelectorAll(".link");
+  const nodes = viewport.querySelectorAll(".node");
+  if(!selected){
+    links.forEach(l=>l.classList.remove("active","dim"));
+    nodes.forEach(n=>n.classList.remove("active","dim"));
+    return;
+  }
+  const connected = new Set([selected]);
+  links.forEach(l=>{
+    const isRel = l.dataset.from===selected || l.dataset.to===selected;
+    l.classList.toggle("active", isRel);
+    l.classList.toggle("dim", !isRel);
+    if(isRel){ connected.add(l.dataset.from); connected.add(l.dataset.to); }
+  });
+  nodes.forEach(n=>{
+    const on = connected.has(n.dataset.name);
+    n.classList.toggle("active", n.dataset.name===selected);
+    n.classList.toggle("dim", !on);
+  });
+}
+
+/* ============================================================
+   TOOLTIPS
+   ============================================================ */
+function showEdgeTooltip(ev,e){
+  const r = svg.getBoundingClientRect();
+  tooltip.innerHTML = `<div class="tt-t">${e.from} → ${e.to}</div>
+    <code>${e.from}.${e.col}</code> references <code>${e.to}.${e.targetPk}</code>`;
+  tooltip.style.left = (ev.clientX-r.left+14)+"px";
+  tooltip.style.top = (ev.clientY-r.top+12)+"px";
+  tooltip.classList.add("show");
+}
+function showNodeTooltip(ev,t){
+  const r = svg.getBoundingClientRect();
+  const fk = t.cols.filter(c=>c[3]).length;
+  tooltip.innerHTML = `<div class="tt-t">${t.name}</div>
+    <div>${t.cols.length} cols · ${fk} FK${fk===1?"":"s"} · ${PHASE_LABEL[t.phase]}</div>
+    <div class="tt-desc">${t.desc}</div>`;
+  tooltip.style.left = (ev.clientX-r.left+14)+"px";
+  tooltip.style.top = (ev.clientY-r.top+12)+"px";
+  tooltip.classList.add("show");
+}
+function hideTooltip(){ tooltip.classList.remove("show"); }
+
+/* ============================================================
+   PANEL
+   ============================================================ */
+function renderPanel(){
+  if(!selected){
+    panelBody.innerHTML = `<div class="empty">Click any table to inspect<br/>columns &amp; FK links.<br/><br/>47 tables · 6 phases<br/>SDG + Carbon layers included.</div>`;
+    return;
+  }
+  const t = SCHEMA.find(x=>x.name===selected);
+  const outL = EDGES.filter(e=>e.from===selected);
+  const inL  = EDGES.filter(e=>e.to===selected);
+
+  let html = `<div class="tbl-name">${t.name}</div>
+    <div class="tbl-desc">${t.desc}</div>
+    <span class="badge" style="background:${PHASE_COLOR[t.phase]}">${PHASE_LABEL[t.phase]}</span>
+    <div class="actions">
+      <button class="action-btn" id="btn-focus">focus 1-hop</button>
+      <button class="action-btn" id="btn-clear">clear selection</button>
+    </div>
+    <h3>Columns (${t.cols.length})</h3><ul class="cols">`;
+  t.cols.forEach(c=>{
+    const cls = c[2]===1?"pk":(c[3]?"fk":"");
+    let tag = "";
+    if(c[2]===1) tag = `<span class="tag pk">PK</span>`;
+    else if(c[3]) tag = `<span class="tag fk">FK→${c[3]}</span>`;
+    html += `<li class="${cls}"><span class="col-name">${c[0]}${tag}</span><span class="col-type">${c[1]}</span></li>`;
+  });
+  html += `</ul>`;
+
+  html += `<h3>Outgoing FK (${outL.length})</h3>`;
+  if(!outL.length) html += `<div class="rel lbl">— none —</div>`;
+  outL.forEach(e=>{
+    html += `<div class="rel" data-goto="${e.to}">
+      <span class="arrow">→</span><b>${e.to}</b>
+      <div class="lbl">${e.col} → ${e.to}.${e.targetPk}</div></div>`;
+  });
+
+  html += `<h3>Incoming FK (${inL.length})</h3>`;
+  if(!inL.length) html += `<div class="rel lbl">— none —</div>`;
+  inL.forEach(e=>{
+    html += `<div class="rel" data-goto="${e.from}">
+      <span class="arrow">←</span><b>${e.from}</b>
+      <div class="lbl">${e.from}.${e.col} → ${e.to}.${e.targetPk}</div></div>`;
+  });
+
+  panelBody.innerHTML = html;
+  panelBody.querySelectorAll(".rel[data-goto]").forEach(el=>{
+    el.addEventListener("click", ()=>selectTable(el.dataset.goto));
+  });
+  document.getElementById("btn-focus").addEventListener("click", ()=>enterFocus(selected));
+  document.getElementById("btn-clear").addEventListener("click", ()=>selectTable(selected));
+}
+
+/* ============================================================
+   SELECTION & FOCUS
+   ============================================================ */
+function selectTable(name){
+  selected = (selected===name) ? null : name;
+  applyHighlight();
+  renderPanel();
+}
+
+function enterFocus(name){
+  if(!name) return;
+  mode = "focus";
+  focusName = name;
+  LAYOUT = layoutFocus(name);
+  tx=0; ty=0; scale=0.85;
+  selected = name;
+  render(); applyTransform(); renderPanel();
+  document.querySelector('.chip[data-act=layout]').textContent = "focus";
+}
+
+function exitFocus(){
+  mode = "columns";
+  focusName = null;
+  LAYOUT = layoutPhaseColumns();
+  tx=0; ty=0; scale=1;
+  render(); applyTransform();
+  document.querySelector('.chip[data-act=layout]').textContent = "columns";
+}
+
+function updateFocusIndicator(){
+  if(mode==="focus" && focusName){
+    focusInd.classList.add("show");
+    focusNameEl.textContent = "→ " + focusName;
+  } else {
+    focusInd.classList.remove("show");
+  }
+}
+
+/* ============================================================
+   PAN & ZOOM
+   ============================================================ */
+svg.addEventListener("mousedown", e=>{
+  if(e.target.closest(".node")) return;
+  dragging = true; dragStart = {x:e.clientX, y:e.clientY, tx, ty};
+  svg.classList.add("dragging");
+});
+window.addEventListener("mousemove", e=>{
+  if(!dragging) return;
+  tx = dragStart.tx + (e.clientX - dragStart.x);
+  ty = dragStart.ty + (e.clientY - dragStart.y);
+  applyTransform();
+});
+window.addEventListener("mouseup", ()=>{ dragging=false; svg.classList.remove("dragging"); });
+svg.addEventListener("wheel", e=>{
+  e.preventDefault();
+  const r = svg.getBoundingClientRect();
+  const mx = e.clientX-r.left, my = e.clientY-r.top;
+  const f = e.deltaY < 0 ? 1.1 : 0.9;
+  const ns = Math.min(3, Math.max(0.2, scale*f));
+  tx = mx - (mx-tx)*(ns/scale);
+  ty = my - (my-ty)*(ns/scale);
+  scale = ns;
+  applyTransform();
+}, {passive:false});
+
+/* ============================================================
+   MINIMAP
+   ============================================================ */
+function drawMinimap(){
+  mmSvg.innerHTML = "";
+  // compute bounds
+  let minX=Infinity, minY=Infinity, maxX=-Infinity, maxY=-Infinity;
+  Object.values(LAYOUT).forEach(p=>{
+    minX = Math.min(minX, p.x); minY = Math.min(minY, p.y);
+    maxX = Math.max(maxX, p.x+p.w); maxY = Math.max(maxY, p.y+p.h);
+  });
+  if(!isFinite(minX)){ return; }
+  const pad = 40;
+  minX-=pad; minY-=pad; maxX+=pad; maxY+=pad;
+  const vw = mmSvg.clientWidth, vh = mmSvg.clientHeight;
+  const s = Math.min(vw/(maxX-minX), vh/(maxY-minY));
+  const ox = (vw - (maxX-minX)*s)/2, oy = (vh - (maxY-minY)*s)/2;
+
+  // draw nodes as tiny dots
+  SCHEMA.forEach(t=>{
+    const p = LAYOUT[t.name];
+    if(!p || !visiblePhases.has(t.phase)) return;
+    const r = document.createElementNS("http://www.w3.org/2000/svg","rect");
+    r.setAttribute("x", ox + (p.x-minX)*s);
+    r.setAttribute("y", oy + (p.y-minY)*s);
+    r.setAttribute("width", Math.max(2, p.w*s));
+    r.setAttribute("height", Math.max(2, p.h*s));
+    r.setAttribute("fill", PHASE_COLOR[t.phase]);
+    r.setAttribute("opacity", 0.7);
+    mmSvg.appendChild(r);
+  });
+
+  // viewport rect
+  const vpRect = svg.getBoundingClientRect();
+  const worldW = vpRect.width/scale, worldH = vpRect.height/scale;
+  const worldX = -tx/scale, worldY = -ty/scale;
+  const vp = document.createElementNS("http://www.w3.org/2000/svg","rect");
+  vp.setAttribute("x", ox + (worldX-minX)*s);
+  vp.setAttribute("y", oy + (worldY-minY)*s);
+  vp.setAttribute("width", worldW*s);
+  vp.setAttribute("height", worldH*s);
+  vp.setAttribute("class","vp");
+  mmSvg.appendChild(vp);
+}
+mmSvg.addEventListener("click", e=>{
+  const r = mmSvg.getBoundingClientRect();
+  // reverse map to world
+  let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+  Object.values(LAYOUT).forEach(p=>{
+    minX=Math.min(minX,p.x);minY=Math.min(minY,p.y);
+    maxX=Math.max(maxX,p.x+p.w);maxY=Math.max(maxY,p.y+p.h);
+  });
+  const pad=40; minX-=pad;minY-=pad;maxX+=pad;maxY+=pad;
+  const vw = mmSvg.clientWidth, vh = mmSvg.clientHeight;
+  const s = Math.min(vw/(maxX-minX), vh/(maxY-minY));
+  const ox = (vw-(maxX-minX)*s)/2, oy = (vh-(maxY-minY)*s)/2;
+  const wx = minX + (e.clientX-r.left-ox)/s;
+  const wy = minY + (e.clientY-r.top-oy)/s;
+  // centre viewport on that world point
+  const stageR = svg.getBoundingClientRect();
+  tx = stageR.width/2 - wx*scale;
+  ty = stageR.height/2 - wy*scale;
+  applyTransform();
+});
+
+/* ============================================================
+   TOOLBAR
+   ============================================================ */
+document.getElementById("search").addEventListener("input", e=>{
+  filterText = e.target.value.trim().toLowerCase();
+  render();
+});
+document.querySelectorAll(".chip[data-phase]").forEach(ch=>{
+  ch.addEventListener("click", ()=>{
+    const ph = ch.dataset.phase;
+    if(visiblePhases.has(ph)){ visiblePhases.delete(ph); ch.classList.remove("on"); }
+    else { visiblePhases.add(ph); ch.classList.add("on"); }
+    render();
+  });
+});
+document.querySelector(".chip[data-act=reset]").addEventListener("click", ()=>{
+  tx=0; ty=0; scale=1;
+  if(mode==="focus") exitFocus();
+  else { LAYOUT = layoutPhaseColumns(); selected=null; render(); renderPanel(); }
+  applyTransform();
+});
+document.querySelector(".chip[data-act=focus]").addEventListener("click", ()=>{
+  if(mode==="focus"){ exitFocus(); renderPanel(); }
+  else if(selected){ enterFocus(selected); }
+  else { flashHint("select a table first"); }
+});
+document.querySelector(".chip[data-act=layout]").addEventListener("click", function(){
+  if(mode==="focus"){ exitFocus(); return; }
+  if(mode==="columns"){ mode="radial"; LAYOUT=layoutRadial(); this.textContent="radial"; }
+  else { mode="columns"; LAYOUT=layoutPhaseColumns(); this.textContent="columns"; }
+  tx=0; ty=0; scale=1;
+  render(); applyTransform();
+});
+
+function flashHint(msg){
+  const h = document.getElementById("hint");
+  const orig = h.textContent;
+  h.textContent = "⚠ " + msg;
+  setTimeout(()=>{ h.innerHTML = orig; }, 1800);
+}
+
+/* keyboard shortcuts */
+window.addEventListener("keydown", e=>{
+  if(e.target.tagName==="INPUT") return;
+  if(e.key==="f" || e.key==="F"){ document.querySelector('.chip[data-act=focus]').click(); }
+  if(e.key==="r" || e.key==="R"){ document.querySelector('.chip[data-act=reset]').click(); }
+  if(e.key==="Escape"){ selected=null; applyHighlight(); renderPanel(); }
+});
+
+/* ============================================================
+   BOOT
+   ============================================================ */
+render();
+renderPanel();
+window.addEventListener("resize", drawMinimap);
+</script>
+</body>
+</html>
